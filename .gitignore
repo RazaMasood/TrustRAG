@@ -216,3 +216,11 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+
+.venv/
+.pytest_cache/
+.ruff_cache/
+.env
+storage/chroma/
+data/raw/
