@@ -1,0 +1,35 @@
+source_group: sebi_investor_education
+raw_dir: data/raw/sebi
+processed_dir: data/processed/sebi
+
+defaults:
+  authority: SEBI
+  jurisdiction: IN
+  trust_level: official
+  document_type: investor_education
+
+documents:
+  - id: financial_education_part_a
+    title: Financial Education Part A
+    file: Financial Education Part A.pdf
+    enabled: true
+
+  - id: securities_market_booklet
+    title: Securities Market Booklet
+    file: Securities Market Booklet.pdf
+    enabled: true
+
+  - id: financial_education_booklet
+    title: Financial Education Booklet
+    file: Financial Education Booklet (English).pdf
+    enabled: true
+
+  - id: financial_planning_guide
+    title: Financial Planning Guide
+    file: Financial Planning Guide (English).pdf
+    enabled: true
+
+  - id: introduction_to_commodity_derivatives_market
+    title: Introduction to Commodity Derivatives Market
+    file: Introduction to Commodity Derivatives Market.pdf
+    enabled: true
