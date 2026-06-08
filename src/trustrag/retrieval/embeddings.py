@@ -6,12 +6,14 @@ import os
 import urllib.error
 import urllib.request
 from collections.abc import Mapping, Sequence
+from pathlib import Path
 from typing import Any, Protocol, Self
 
+from dotenv import load_dotenv
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434"
-DEFAULT_EMBEDDING_MODEL = "embeddinggemma"
+DEFAULT_EMBEDDING_MODEL = "embeddinggemma:latest"
 DEFAULT_EMBEDDING_BATCH_SIZE = 32
 
 
@@ -93,10 +95,15 @@ class OllamaEmbeddingClient:
     def from_env(
         cls,
         env: Mapping[str, str] | None = None,
+        *,
+        dotenv_path: Path | str | None = None,
     ) -> OllamaEmbeddingClient:
-        """Create a client from TRUSTRAG_* environment variables."""
+        """Create a client from .env and TRUSTRAG_* environment variables."""
 
-        env = env or os.environ
+        if env is None:
+            load_dotenv(dotenv_path=dotenv_path, override=False)
+            env = os.environ
+
         options: dict[str, Any] = {
             "base_url": env.get("TRUSTRAG_OLLAMA_BASE_URL", DEFAULT_OLLAMA_BASE_URL),
             "model": env.get("TRUSTRAG_EMBEDDING_MODEL", DEFAULT_EMBEDDING_MODEL),

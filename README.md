@@ -11,12 +11,15 @@ retrieval foundations are in place. Core RAG implementation is in progress.
 
 ## Local Configuration
 
-TrustRAG reads Ollama embedding settings from environment variables:
+TrustRAG reads Ollama embedding settings from `.env`:
 
 ```env
 TRUSTRAG_OLLAMA_BASE_URL=https://ollama.alvision.in
-TRUSTRAG_EMBEDDING_MODEL=embeddinggemma
+TRUSTRAG_EMBEDDING_MODEL=embeddinggemma:latest
 ```
+
+Use [.env.example](D:/Development/TrustRAG/.env.example) as the template. The
+real `.env` file is ignored by Git.
 
 Generated ingestion outputs and local Chroma indexes are intentionally ignored by
 Git.

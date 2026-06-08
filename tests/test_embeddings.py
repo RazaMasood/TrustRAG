@@ -1,10 +1,12 @@
 import json
 import urllib.error
+from pathlib import Path
 
 import pytest
 
 import trustrag.retrieval.embeddings as embeddings_module
 from trustrag.retrieval.embeddings import (
+    DEFAULT_EMBEDDING_MODEL,
     EmbeddingInputError,
     EmbeddingRequestError,
     EmbeddingResponseError,
@@ -36,7 +38,7 @@ def test_ollama_client_posts_to_embed_endpoint(monkeypatch: pytest.MonkeyPatch) 
         captured["body"] = json.loads(request.data.decode("utf-8"))
         return _FakeResponse(
             {
-                "model": "embeddinggemma",
+                "model": "embeddinggemma:latest",
                 "embeddings": [[0.1, 0.2], [0.3, 0.4]],
             }
         )
@@ -45,7 +47,7 @@ def test_ollama_client_posts_to_embed_endpoint(monkeypatch: pytest.MonkeyPatch) 
     client = OllamaEmbeddingClient(
         OllamaEmbeddingConfig(
             base_url="https://ollama.alvision.in/",
-            model="embeddinggemma",
+            model="embeddinggemma:latest",
             timeout_seconds=12,
         )
     )
@@ -56,7 +58,7 @@ def test_ollama_client_posts_to_embed_endpoint(monkeypatch: pytest.MonkeyPatch) 
     assert vectors == [[0.1, 0.2], [0.3, 0.4]]
     assert captured["timeout"] == 12
     assert captured["body"] == {
-        "model": "embeddinggemma",
+        "model": "embeddinggemma:latest",
         "input": ["KYC process", "demat account"],
         "truncate": True,
     }
@@ -69,7 +71,7 @@ def test_ollama_client_accepts_base_url_that_already_includes_api(
         embeddings_module.urllib.request,
         "urlopen",
         lambda *_args, **_kwargs: _FakeResponse(
-            {"model": "embeddinggemma", "embeddings": [[0.1]]}
+            {"model": "embeddinggemma:latest", "embeddings": [[0.1]]}
         ),
     )
     client = OllamaEmbeddingClient(
@@ -85,16 +87,49 @@ def test_ollama_client_can_be_configured_from_environment() -> None:
     client = OllamaEmbeddingClient.from_env(
         {
             "TRUSTRAG_OLLAMA_BASE_URL": "https://ollama.alvision.in",
-            "TRUSTRAG_EMBEDDING_MODEL": "embeddinggemma",
+            "TRUSTRAG_EMBEDDING_MODEL": "embeddinggemma:latest",
             "TRUSTRAG_OLLAMA_TIMEOUT_SECONDS": "15",
             "TRUSTRAG_EMBEDDING_BATCH_SIZE": "8",
         }
     )
 
     assert client.config.base_url == "https://ollama.alvision.in"
-    assert client.config.model == "embeddinggemma"
+    assert client.config.model == "embeddinggemma:latest"
     assert client.config.timeout_seconds == 15
     assert client.config.batch_size == 8
+
+
+def test_ollama_client_loads_dotenv_file(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    dotenv_path = tmp_path / ".env"
+    dotenv_path.write_text(
+        "\n".join(
+            [
+                "TRUSTRAG_OLLAMA_BASE_URL=https://ollama.alvision.in",
+                "TRUSTRAG_EMBEDDING_MODEL=bge-m3:latest",
+                "TRUSTRAG_OLLAMA_TIMEOUT_SECONDS=20",
+                "TRUSTRAG_EMBEDDING_BATCH_SIZE=4",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.delenv("TRUSTRAG_OLLAMA_BASE_URL", raising=False)
+    monkeypatch.delenv("TRUSTRAG_EMBEDDING_MODEL", raising=False)
+    monkeypatch.delenv("TRUSTRAG_OLLAMA_TIMEOUT_SECONDS", raising=False)
+    monkeypatch.delenv("TRUSTRAG_EMBEDDING_BATCH_SIZE", raising=False)
+
+    client = OllamaEmbeddingClient.from_env(dotenv_path=dotenv_path)
+
+    assert client.config.base_url == "https://ollama.alvision.in"
+    assert client.config.model == "bge-m3:latest"
+    assert client.config.timeout_seconds == 20
+    assert client.config.batch_size == 4
+
+
+def test_default_embedding_model_matches_installed_ollama_tag() -> None:
+    assert DEFAULT_EMBEDDING_MODEL == "embeddinggemma:latest"
 
 
 def test_ollama_client_rejects_blank_input() -> None:
@@ -111,7 +146,7 @@ def test_ollama_client_rejects_invalid_response(
         embeddings_module.urllib.request,
         "urlopen",
         lambda *_args, **_kwargs: _FakeResponse(
-            {"model": "embeddinggemma", "embeddings": []}
+            {"model": "embeddinggemma:latest", "embeddings": []}
         ),
     )
     client = OllamaEmbeddingClient()
