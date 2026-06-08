@@ -15,6 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_valida
 DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434"
 DEFAULT_EMBEDDING_MODEL = "embeddinggemma:latest"
 DEFAULT_EMBEDDING_BATCH_SIZE = 32
+DEFAULT_OLLAMA_USER_AGENT = "curl/8.5.0"
 
 
 class EmbeddingError(Exception):
@@ -56,6 +57,7 @@ class OllamaEmbeddingConfig(BaseModel):
     model: str = Field(default=DEFAULT_EMBEDDING_MODEL, min_length=1)
     timeout_seconds: float = Field(default=30.0, gt=0)
     batch_size: int = Field(default=DEFAULT_EMBEDDING_BATCH_SIZE, ge=1)
+    user_agent: str = DEFAULT_OLLAMA_USER_AGENT
     truncate: bool = True
     dimensions: int | None = Field(default=None, gt=0)
     options: dict[str, Any] = Field(default_factory=dict)
@@ -113,6 +115,8 @@ class OllamaEmbeddingClient:
             options["timeout_seconds"] = float(timeout)
         if batch_size := env.get("TRUSTRAG_EMBEDDING_BATCH_SIZE"):
             options["batch_size"] = int(batch_size)
+        if user_agent := env.get("TRUSTRAG_OLLAMA_USER_AGENT"):
+            options["user_agent"] = user_agent
 
         return cls(OllamaEmbeddingConfig(**options))
 
@@ -148,7 +152,10 @@ class OllamaEmbeddingClient:
         request = urllib.request.Request(
             self._endpoint,
             data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
+            headers={
+                "Content-Type": "application/json",
+                "User-Agent": self.config.user_agent,
+            },
             method="POST",
         )
 
@@ -252,6 +259,7 @@ __all__ = [
     "DEFAULT_EMBEDDING_BATCH_SIZE",
     "DEFAULT_EMBEDDING_MODEL",
     "DEFAULT_OLLAMA_BASE_URL",
+    "DEFAULT_OLLAMA_USER_AGENT",
     "EmbeddingClient",
     "EmbeddingConfigError",
     "EmbeddingError",

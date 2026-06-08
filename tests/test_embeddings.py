@@ -7,6 +7,7 @@ import pytest
 import trustrag.retrieval.embeddings as embeddings_module
 from trustrag.retrieval.embeddings import (
     DEFAULT_EMBEDDING_MODEL,
+    DEFAULT_OLLAMA_USER_AGENT,
     EmbeddingInputError,
     EmbeddingRequestError,
     EmbeddingResponseError,
@@ -35,6 +36,7 @@ def test_ollama_client_posts_to_embed_endpoint(monkeypatch: pytest.MonkeyPatch) 
     def fake_urlopen(request: object, timeout: float) -> _FakeResponse:
         captured["url"] = request.full_url
         captured["timeout"] = timeout
+        captured["user_agent"] = request.get_header("User-agent")
         captured["body"] = json.loads(request.data.decode("utf-8"))
         return _FakeResponse(
             {
@@ -57,6 +59,7 @@ def test_ollama_client_posts_to_embed_endpoint(monkeypatch: pytest.MonkeyPatch) 
     assert client.endpoint == "https://ollama.alvision.in/api/embed"
     assert vectors == [[0.1, 0.2], [0.3, 0.4]]
     assert captured["timeout"] == 12
+    assert captured["user_agent"] == DEFAULT_OLLAMA_USER_AGENT
     assert captured["body"] == {
         "model": "embeddinggemma:latest",
         "input": ["KYC process", "demat account"],
@@ -111,6 +114,7 @@ def test_ollama_client_loads_dotenv_file(
                 "TRUSTRAG_EMBEDDING_MODEL=bge-m3:latest",
                 "TRUSTRAG_OLLAMA_TIMEOUT_SECONDS=20",
                 "TRUSTRAG_EMBEDDING_BATCH_SIZE=4",
+                "TRUSTRAG_OLLAMA_USER_AGENT=curl/8.5.0",
             ]
         ),
         encoding="utf-8",
@@ -119,6 +123,7 @@ def test_ollama_client_loads_dotenv_file(
     monkeypatch.delenv("TRUSTRAG_EMBEDDING_MODEL", raising=False)
     monkeypatch.delenv("TRUSTRAG_OLLAMA_TIMEOUT_SECONDS", raising=False)
     monkeypatch.delenv("TRUSTRAG_EMBEDDING_BATCH_SIZE", raising=False)
+    monkeypatch.delenv("TRUSTRAG_OLLAMA_USER_AGENT", raising=False)
 
     client = OllamaEmbeddingClient.from_env(dotenv_path=dotenv_path)
 
@@ -126,6 +131,7 @@ def test_ollama_client_loads_dotenv_file(
     assert client.config.model == "bge-m3:latest"
     assert client.config.timeout_seconds == 20
     assert client.config.batch_size == 4
+    assert client.config.user_agent == DEFAULT_OLLAMA_USER_AGENT
 
 
 def test_default_embedding_model_matches_installed_ollama_tag() -> None:
