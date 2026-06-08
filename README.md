@@ -6,7 +6,20 @@ TrustRAG is a planned agentic RAG system focused on source-grounded answers, hyb
 
 ## Status
 
-Current status: project scaffold. Core RAG implementation is in progress.
+Current status: ingestion, parent-child chunking, BM25 retrieval, and vector
+retrieval foundations are in place. Core RAG implementation is in progress.
+
+## Local Configuration
+
+TrustRAG reads Ollama embedding settings from environment variables:
+
+```env
+TRUSTRAG_OLLAMA_BASE_URL=https://ollama.alvision.in
+TRUSTRAG_EMBEDDING_MODEL=embeddinggemma
+```
+
+Generated ingestion outputs and local Chroma indexes are intentionally ignored by
+Git.
 
 ## Target Features
 
