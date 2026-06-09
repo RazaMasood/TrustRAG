@@ -16,7 +16,13 @@ TrustRAG reads Ollama embedding settings from `.env`:
 ```env
 TRUSTRAG_OLLAMA_BASE_URL=https://ollama.alvision.in
 TRUSTRAG_EMBEDDING_MODEL=embeddinggemma:latest
-TRUSTRAG_OLLAMA_USER_AGENT=curl/8.5.0
+TRUSTRAG_OLLAMA_USER_AGENT=TrustRAG/0.1.0
+```
+
+If Ollama is behind a proxy or WAF, allow API requests that use:
+
+```text
+User-Agent: TrustRAG/0.1.0
 ```
 
 Use [.env.example](D:/Development/TrustRAG/.env.example) as the template. The

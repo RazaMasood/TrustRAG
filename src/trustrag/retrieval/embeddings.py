@@ -15,7 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_valida
 DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434"
 DEFAULT_EMBEDDING_MODEL = "embeddinggemma:latest"
 DEFAULT_EMBEDDING_BATCH_SIZE = 32
-DEFAULT_OLLAMA_USER_AGENT = "curl/8.5.0"
+DEFAULT_OLLAMA_USER_AGENT = "TrustRAG/0.1.0"
 
 
 class EmbeddingError(Exception):

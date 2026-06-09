@@ -114,7 +114,7 @@ def test_ollama_client_loads_dotenv_file(
                 "TRUSTRAG_EMBEDDING_MODEL=bge-m3:latest",
                 "TRUSTRAG_OLLAMA_TIMEOUT_SECONDS=20",
                 "TRUSTRAG_EMBEDDING_BATCH_SIZE=4",
-                "TRUSTRAG_OLLAMA_USER_AGENT=curl/8.5.0",
+                "TRUSTRAG_OLLAMA_USER_AGENT=TrustRAG/0.1.0",
             ]
         ),
         encoding="utf-8",
