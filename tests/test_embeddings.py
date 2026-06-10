@@ -6,8 +6,7 @@ import pytest
 
 import trustrag.retrieval.embeddings as embeddings_module
 from trustrag.retrieval.embeddings import (
-    DEFAULT_EMBEDDING_MODEL,
-    DEFAULT_OLLAMA_USER_AGENT,
+    EmbeddingConfigError,
     EmbeddingInputError,
     EmbeddingRequestError,
     EmbeddingResponseError,
@@ -30,6 +29,23 @@ class _FakeResponse:
         return json.dumps(self.payload).encode("utf-8")
 
 
+def _config(
+    *,
+    base_url: str = "https://ollama.alvision.in/",
+    model: str = "embeddinggemma:latest",
+    timeout_seconds: float = 30,
+    batch_size: int = 32,
+    user_agent: str = "TrustRAG/0.1.0",
+) -> OllamaEmbeddingConfig:
+    return OllamaEmbeddingConfig(
+        base_url=base_url,
+        model=model,
+        timeout_seconds=timeout_seconds,
+        batch_size=batch_size,
+        user_agent=user_agent,
+    )
+
+
 def test_ollama_client_posts_to_embed_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
     captured: dict[str, object] = {}
 
@@ -47,11 +63,7 @@ def test_ollama_client_posts_to_embed_endpoint(monkeypatch: pytest.MonkeyPatch) 
 
     monkeypatch.setattr(embeddings_module.urllib.request, "urlopen", fake_urlopen)
     client = OllamaEmbeddingClient(
-        OllamaEmbeddingConfig(
-            base_url="https://ollama.alvision.in/",
-            model="embeddinggemma:latest",
-            timeout_seconds=12,
-        )
+        _config(timeout_seconds=12)
     )
 
     vectors = client.embed_texts(["KYC process", "demat account"])
@@ -59,7 +71,7 @@ def test_ollama_client_posts_to_embed_endpoint(monkeypatch: pytest.MonkeyPatch) 
     assert client.endpoint == "https://ollama.alvision.in/api/embed"
     assert vectors == [[0.1, 0.2], [0.3, 0.4]]
     assert captured["timeout"] == 12
-    assert captured["user_agent"] == DEFAULT_OLLAMA_USER_AGENT
+    assert captured["user_agent"] == "TrustRAG/0.1.0"
     assert captured["body"] == {
         "model": "embeddinggemma:latest",
         "input": ["KYC process", "demat account"],
@@ -78,7 +90,7 @@ def test_ollama_client_accepts_base_url_that_already_includes_api(
         ),
     )
     client = OllamaEmbeddingClient(
-        OllamaEmbeddingConfig(base_url="https://ollama.alvision.in/api")
+        _config(base_url="https://ollama.alvision.in/api")
     )
 
     client.embed_text("KYC")
@@ -93,6 +105,7 @@ def test_ollama_client_can_be_configured_from_environment() -> None:
             "TRUSTRAG_EMBEDDING_MODEL": "embeddinggemma:latest",
             "TRUSTRAG_OLLAMA_TIMEOUT_SECONDS": "15",
             "TRUSTRAG_EMBEDDING_BATCH_SIZE": "8",
+            "TRUSTRAG_OLLAMA_USER_AGENT": "TrustRAG/0.1.0",
         }
     )
 
@@ -100,6 +113,12 @@ def test_ollama_client_can_be_configured_from_environment() -> None:
     assert client.config.model == "embeddinggemma:latest"
     assert client.config.timeout_seconds == 15
     assert client.config.batch_size == 8
+    assert client.config.user_agent == "TrustRAG/0.1.0"
+
+
+def test_ollama_client_rejects_missing_environment_config() -> None:
+    with pytest.raises(EmbeddingConfigError, match="TRUSTRAG_OLLAMA_BASE_URL"):
+        OllamaEmbeddingClient.from_env({})
 
 
 def test_ollama_client_loads_dotenv_file(
@@ -131,15 +150,11 @@ def test_ollama_client_loads_dotenv_file(
     assert client.config.model == "bge-m3:latest"
     assert client.config.timeout_seconds == 20
     assert client.config.batch_size == 4
-    assert client.config.user_agent == DEFAULT_OLLAMA_USER_AGENT
-
-
-def test_default_embedding_model_matches_installed_ollama_tag() -> None:
-    assert DEFAULT_EMBEDDING_MODEL == "embeddinggemma:latest"
+    assert client.config.user_agent == "TrustRAG/0.1.0"
 
 
 def test_ollama_client_rejects_blank_input() -> None:
-    client = OllamaEmbeddingClient()
+    client = OllamaEmbeddingClient(_config())
 
     with pytest.raises(EmbeddingInputError, match="empty"):
         client.embed_text("   ")
@@ -155,7 +170,7 @@ def test_ollama_client_rejects_invalid_response(
             {"model": "embeddinggemma:latest", "embeddings": []}
         ),
     )
-    client = OllamaEmbeddingClient()
+    client = OllamaEmbeddingClient(_config())
 
     with pytest.raises(EmbeddingResponseError, match="did not contain vectors"):
         client.embed_text("KYC")
@@ -166,7 +181,7 @@ def test_ollama_client_reports_http_errors(monkeypatch: pytest.MonkeyPatch) -> N
         raise urllib.error.URLError("connection refused")
 
     monkeypatch.setattr(embeddings_module.urllib.request, "urlopen", fake_urlopen)
-    client = OllamaEmbeddingClient()
+    client = OllamaEmbeddingClient(_config())
 
     with pytest.raises(EmbeddingRequestError, match="request failed"):
         client.embed_text("KYC")

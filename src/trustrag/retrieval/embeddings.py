@@ -12,11 +12,6 @@ from typing import Any, Protocol, Self
 from dotenv import load_dotenv
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
-DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434"
-DEFAULT_EMBEDDING_MODEL = "embeddinggemma:latest"
-DEFAULT_EMBEDDING_BATCH_SIZE = 32
-DEFAULT_OLLAMA_USER_AGENT = "TrustRAG/0.1.0"
-
 
 class EmbeddingError(Exception):
     """Base class for embedding failures."""
@@ -53,11 +48,11 @@ class OllamaEmbeddingConfig(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    base_url: str = DEFAULT_OLLAMA_BASE_URL
-    model: str = Field(default=DEFAULT_EMBEDDING_MODEL, min_length=1)
-    timeout_seconds: float = Field(default=30.0, gt=0)
-    batch_size: int = Field(default=DEFAULT_EMBEDDING_BATCH_SIZE, ge=1)
-    user_agent: str = DEFAULT_OLLAMA_USER_AGENT
+    base_url: str = Field(min_length=1)
+    model: str = Field(min_length=1)
+    timeout_seconds: float = Field(gt=0)
+    batch_size: int = Field(ge=1)
+    user_agent: str = Field(min_length=1)
     truncate: bool = True
     dimensions: int | None = Field(default=None, gt=0)
     options: dict[str, Any] = Field(default_factory=dict)
@@ -89,8 +84,8 @@ class OllamaEmbeddingResponse(BaseModel):
 class OllamaEmbeddingClient:
     """HTTP client for Ollama's /api/embed endpoint."""
 
-    def __init__(self, config: OllamaEmbeddingConfig | None = None) -> None:
-        self.config = config or OllamaEmbeddingConfig()
+    def __init__(self, config: OllamaEmbeddingConfig) -> None:
+        self.config = config
         self._endpoint = _build_embed_endpoint(self.config.base_url)
 
     @classmethod
@@ -106,19 +101,18 @@ class OllamaEmbeddingClient:
             load_dotenv(dotenv_path=dotenv_path, override=False)
             env = os.environ
 
-        options: dict[str, Any] = {
-            "base_url": env.get("TRUSTRAG_OLLAMA_BASE_URL", DEFAULT_OLLAMA_BASE_URL),
-            "model": env.get("TRUSTRAG_EMBEDDING_MODEL", DEFAULT_EMBEDDING_MODEL),
-        }
-
-        if timeout := env.get("TRUSTRAG_OLLAMA_TIMEOUT_SECONDS"):
-            options["timeout_seconds"] = float(timeout)
-        if batch_size := env.get("TRUSTRAG_EMBEDDING_BATCH_SIZE"):
-            options["batch_size"] = int(batch_size)
-        if user_agent := env.get("TRUSTRAG_OLLAMA_USER_AGENT"):
-            options["user_agent"] = user_agent
-
-        return cls(OllamaEmbeddingConfig(**options))
+        return cls(
+            OllamaEmbeddingConfig(
+                base_url=_required_env(env, "TRUSTRAG_OLLAMA_BASE_URL"),
+                model=_required_env(env, "TRUSTRAG_EMBEDDING_MODEL"),
+                timeout_seconds=_float_env(
+                    env,
+                    "TRUSTRAG_OLLAMA_TIMEOUT_SECONDS",
+                ),
+                batch_size=_int_env(env, "TRUSTRAG_EMBEDDING_BATCH_SIZE"),
+                user_agent=_required_env(env, "TRUSTRAG_OLLAMA_USER_AGENT"),
+            )
+        )
 
     @property
     def endpoint(self) -> str:
@@ -193,6 +187,33 @@ def _build_embed_endpoint(base_url: str) -> str:
     return f"{normalized}/api/embed"
 
 
+def _required_env(env: Mapping[str, str], key: str) -> str:
+    value = env.get(key)
+    if value is None or not value.strip():
+        raise EmbeddingConfigError(f"Missing required environment variable: {key}")
+    return value
+
+
+def _float_env(env: Mapping[str, str], key: str) -> float:
+    value = _required_env(env, key)
+    try:
+        return float(value)
+    except ValueError as exc:
+        raise EmbeddingConfigError(
+            f"Environment variable {key} must be a number"
+        ) from exc
+
+
+def _int_env(env: Mapping[str, str], key: str) -> int:
+    value = _required_env(env, key)
+    try:
+        return int(value)
+    except ValueError as exc:
+        raise EmbeddingConfigError(
+            f"Environment variable {key} must be an integer"
+        ) from exc
+
+
 def _validate_texts(texts: Sequence[str]) -> list[str]:
     if not texts:
         return []
@@ -256,10 +277,6 @@ def _batched(items: Sequence[str], batch_size: int) -> list[list[str]]:
 
 
 __all__ = [
-    "DEFAULT_EMBEDDING_BATCH_SIZE",
-    "DEFAULT_EMBEDDING_MODEL",
-    "DEFAULT_OLLAMA_BASE_URL",
-    "DEFAULT_OLLAMA_USER_AGENT",
     "EmbeddingClient",
     "EmbeddingConfigError",
     "EmbeddingError",

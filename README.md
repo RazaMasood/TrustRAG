@@ -16,6 +16,8 @@ TrustRAG reads Ollama embedding settings from `.env`:
 ```env
 TRUSTRAG_OLLAMA_BASE_URL=https://ollama.alvision.in
 TRUSTRAG_EMBEDDING_MODEL=embeddinggemma:latest
+TRUSTRAG_OLLAMA_TIMEOUT_SECONDS=30
+TRUSTRAG_EMBEDDING_BATCH_SIZE=32
 TRUSTRAG_OLLAMA_USER_AGENT=TrustRAG/0.1.0
 ```
 
